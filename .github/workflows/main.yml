@@ -1,0 +1,77 @@
+name: GitHub Actions Build and Deploy
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*"
+      # Push events to matching v*, i.e. v1.0, v20.15.10
+    branches:
+      - master
+env:
+  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}              
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master  
+    - name: Get Last Tag
+      id: last_tag
+      run: |
+          latest_tag=${{ github.ref }}
+          echo "::set-output name=tag::$latest_tag"
+
+    - name: Extract Last Digit
+      id: extract_digit
+      run: |
+          last_tag=$INPUT_TAG
+          last_digit=$(echo "$last_tag" | awk -F. '{print $NF}')
+          echo "::set-output name=last_digit::$last_digit"
+    - name: Increment Last Digit
+      id: increment_digit
+      run: |
+          last_digit=$INPUT_LAST_DIGIT
+          new_last_digit=$((last_digit + 1))
+          echo "::set-output name=new_last_digit::$new_last_digit"
+
+  #  - name: Generate New Tag
+    #  id: generate_tag
+     # run: |
+         # last_tag=$INPUT_TAG
+        #  new_last_digit=$INPUT_NEW_LAST_DIGIT
+       #   new_tag=$(echo "$last_tag" | awk -F. '{$NF='$new_last_digit'}1')
+       #   echo "::set-output name=new_tag::$new_tag"
+    - name: Build
+      run: |
+        sudo apt update
+        sudo apt install mingw-w64 -y
+        sudo apt install clang -y
+        sudo apt install gcc-arm-none-eabi
+        g++ ./main.cpp -DNDEBUG
+        mv -v ./a.out ./town_game_linux
+        tar -czvf town_game_linux.tgz
+    - name: 'Upload Artifact'
+      uses: actions/upload-artifact@v4
+      with:
+          name: town_game_linux.tgz
+          path: ./town_game_linux.tgz
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+            tag_name: ${{ github.ref }}_release
+            release_name: Release ${{ github.ref }}
+            draft: false
+            prerelease: false
+    - name: Upload Release Asset
+      id: upload-release-asset 
+      uses: actions/upload-release-asset@v1
+      env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+            upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+            asset_path: ./town_game_linux.tgz
+            asset_name: town_game_linux.tgz
+            asset_content_type: application/zip  
