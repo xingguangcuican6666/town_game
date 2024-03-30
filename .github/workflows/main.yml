@@ -47,9 +47,9 @@ jobs:
         sudo apt install mingw-w64 -y
         sudo apt install clang -y
         sudo apt install gcc-arm-none-eabi
-        g++ ./main.cpp -DNDEBUG
+        g++ ./main.cpp -DNDEBUG -o ./a.out
         mv -v ./a.out ./town_game_linux
-        tar -czvf town_game_linux.tgz
+        tar -czvf town_game_linux.tgz ./town_game_linux
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v4
       with:
